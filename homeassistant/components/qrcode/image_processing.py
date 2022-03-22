@@ -12,6 +12,8 @@ from homeassistant.core import HomeAssistant, split_entity_id
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
+ATTR_BARCODES = "barcodes"
+
 
 def setup_platform(
     hass: HomeAssistant,
@@ -40,6 +42,8 @@ class QrEntity(ImageProcessingEntity):
             self._name = name
         else:
             self._name = f"QR {split_entity_id(camera_entity)[1]}"
+        
+        self._barcodes = []
         self._state = None
 
     @property
@@ -53,9 +57,19 @@ class QrEntity(ImageProcessingEntity):
         return self._state
 
     @property
+    def barcodes(self) -> list[str]:
+        """Returns all found barcodes."""
+        return self._barcodes
+
+    @property
     def name(self):
         """Return the name of the entity."""
         return self._name
+
+    @property
+    def state_attributes(self):
+        """Return device specific state attributes."""
+        return {ATTR_BARCODES: self.barcodes}
 
     def process_image(self, image):
         """Process image."""
@@ -64,6 +78,8 @@ class QrEntity(ImageProcessingEntity):
 
         barcodes = pyzbar.decode(img)
         if barcodes:
-            self._state = barcodes[0].data.decode("utf-8")
+            self._barcodes = list(map(lambda barcode: barcode.data.decode("utf-8"), barcodes))
+            self._state = self._barcodes[0]
         else:
+            self._barcodes = []
             self._state = None
